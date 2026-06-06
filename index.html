@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CBA 2025-2026 数据可视化系统</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script src="data.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#1a1a2e;color:#e0e0e0;min-height:100vh}
+a{color:#F39C12;text-decoration:none}
+
+/* Breadcrumb */
+#breadcrumb{position:fixed;top:0;left:0;right:0;z-index:100;background:linear-gradient(135deg,#0f0c29,#16213e,#0f3460);padding:10px 24px;display:flex;align-items:center;gap:8px;font-size:14px;box-shadow:0 2px 12px rgba(0,0,0,.4);flex-wrap:wrap}
+#breadcrumb .crumb{cursor:pointer;padding:4px 10px;border-radius:4px;transition:all .2s;color:#a0a0b0}
+#breadcrumb .crumb:hover{background:rgba(243,156,18,.15);color:#F39C12}
+#breadcrumb .crumb.root{font-weight:700;color:#F39C12;font-size:15px}
+#breadcrumb .crumb-sep{color:#555;user-select:none}
+#breadcrumb .view-switch{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+#breadcrumb .view-switch button{padding:5px 12px;border:1px solid #0f3460;border-radius:4px;background:transparent;color:#a0a0b0;cursor:pointer;font-size:12px;transition:all .2s;white-space:nowrap}
+#breadcrumb .view-switch button:hover{border-color:#F39C12;color:#F39C12}
+#breadcrumb .view-switch button.active{background:#F39C12;color:#1a1a2e;border-color:#F39C12}
+.hidden{display:none!important}
+
+/* Views */
+.view{display:none;padding:70px 24px 24px;min-height:100vh}
+.view.active{display:block}
+
+/* Back button */
+.btn-back{display:inline-block;padding:8px 18px;background:#16213e;border:1px solid #0f3460;color:#a0a0b0;border-radius:6px;cursor:pointer;font-size:14px;margin-bottom:16px;transition:all .2s}
+.btn-back:hover{background:#1a3a5e;color:#fff}
+.btn-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.btn-action{padding:8px 18px;background:linear-gradient(135deg,#0f3460,#16213e);border:1px solid #2980B9;color:#e0e0e0;border-radius:6px;cursor:pointer;font-size:13px;transition:all .2s}
+.btn-action:hover{background:#2980B9;color:#fff}
+
+/* Cards */
+.cards-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:20px}
+.stat-card{background:#16213e;border-radius:10px;padding:12px 8px;text-align:center;border-top:3px solid #0f3460;transition:transform .2s}
+.stat-card:hover{transform:translateY(-2px)}
+.stat-card.south{border-top-color:#E74C3C}
+.stat-card.north{border-top-color:#2980B9}
+.stat-card .val{font-size:22px;font-weight:700;margin:2px 0}
+.stat-card .lbl{font-size:11px;color:#808090;margin-top:1px}
+.stat-card .val.red{color:#E74C3C}
+.stat-card .val.blue{color:#2980B9}
+
+/* Chart containers */
+.chart-container{width:100%;height:550px}
+.chart-container.chart-tall{height:650px}
+.chart-container.chart-med{height:450px}
+
+/* Map + Ranking layout */
+#map-layout{display:flex;gap:16px;align-items:flex-start}
+#map-layout #chart-map{flex:1;min-width:0}
+.ranking-panel{width:260px;flex-shrink:0;background:#16213e;border-radius:10px;padding:14px;border:1px solid #0f3460;max-height:650px;overflow-y:auto}
+.ranking-panel .ranking-title{font-size:15px;color:#F39C12;text-align:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #0f3460}
+.ranking-row{display:flex;align-items:center;padding:6px 8px;border-radius:6px;cursor:pointer;transition:all .15s;gap:8px;margin-bottom:2px}
+.ranking-row:hover{background:rgba(243,156,18,.1)}
+.ranking-row .rk{width:22px;height:22px;border-radius:50%;text-align:center;line-height:22px;font-size:11px;font-weight:700;flex-shrink:0}
+.ranking-row .rk.top3{background:#F39C12;color:#1a1a2e}
+.ranking-row .rk.normal{background:#0f3460;color:#a0a0b0}
+.ranking-row .rk-logo{width:24px;height:24px;flex-shrink:0;object-fit:contain}
+.ranking-row .rk-name{flex:1;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ranking-row .rk-record{font-size:11px;color:#808090;flex-shrink:0}
+.ranking-row.south .rk-name{color:#E74C3C}
+.ranking-row.north .rk-name{color:#2980B9}
+.ranking-row:hover .rk-name{color:#F39C12}
+
+/* Table */
+.table-wrap{overflow-x:auto;margin-top:16px;max-height:500px;overflow-y:auto}
+table.data-table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
+table.data-table thead{position:sticky;top:0;z-index:5}
+table.data-table th{background:#0f3460;color:#e0e0e0;padding:10px 8px;text-align:center;cursor:pointer;user-select:none;white-space:nowrap;font-weight:500}
+table.data-table th:hover{background:#1a4a80}
+table.data-table th.sorted{color:#F39C12}
+table.data-table td{padding:8px;text-align:center;border-bottom:1px solid #1a1a3e;white-space:nowrap}
+table.data-table tbody tr{cursor:pointer;transition:background .15s}
+table.data-table tbody tr:hover{background:rgba(243,156,18,.1)}
+table.data-table tbody tr.selected{background:rgba(243,156,18,.2)}
+
+/* Team header */
+.team-header{display:flex;align-items:center;gap:20px;margin-bottom:20px;flex-wrap:wrap}
+.team-logo-lg{width:80px;height:80px;border-radius:12px;object-fit:contain;background:rgba(255,255,255,.05);padding:4px}
+.team-title h1{font-size:28px;margin-bottom:4px}
+.team-title .sub{font-size:14px;color:#808090}
+
+/* Controls */
+.controls{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.controls label{font-size:13px;color:#a0a0b0;display:flex;align-items:center;gap:6px}
+.controls select{background:#16213e;color:#e0e0e0;border:1px solid #0f3460;padding:8px 12px;border-radius:6px;font-size:13px;cursor:pointer;min-width:140px}
+.controls select:focus{outline:none;border-color:#2980B9}
+.controls .corr{font-size:14px;font-weight:600;padding:4px 10px;border-radius:4px;margin-left:8px}
+.corr.strong{color:#27AE60}
+.corr.moderate{color:#F39C12}
+.corr.weak{color:#E74C3C}
+
+/* Tooltip */
+.custom-tooltip{position:fixed;pointer-events:none;z-index:200;background:#16213e;border:1px solid #0f3460;border-radius:8px;padding:12px;font-size:13px;box-shadow:0 4px 20px rgba(0,0,0,.5);max-width:260px}
+
+/* Responsive */
+@media(max-width:768px){
+  #breadcrumb{font-size:12px;padding:8px 12px;gap:4px}
+  .cards-row{grid-template-columns:repeat(3,1fr);gap:6px}
+  .stat-card{padding:8px 4px}
+  .stat-card .val{font-size:16px}
+  .chart-container{height:350px}
+  .chart-container.chart-tall{height:400px}
+  #map-layout{flex-direction:column}
+  .ranking-panel{width:100%;max-height:300px}
+  .view{padding:60px 10px 10px}
+  .team-header{flex-direction:column;align-items:flex-start}
+}
+
+/* Loading */
+.loading{text-align:center;padding:60px;color:#808090;font-size:16px}
+.loading::after{content:'...';animation:dots 1.5s infinite}
+@keyframes dots{0%,20%{content:'.'}40%{content:'..'}60%,100%{content:'...'}}
+</style>
+</head>
+<body>
+
+<!-- Breadcrumb -->
+<nav id="breadcrumb">
+  <span class="crumb root" data-view="map">&#127936; CBA 2025-2026</span>
+  <span id="crumb-sep1" class="crumb-sep hidden">&gt;</span>
+  <span id="crumb-team" class="crumb hidden" data-view="team"></span>
+  <span id="crumb-sep2" class="crumb-sep hidden">&gt;</span>
+  <span id="crumb-sub" class="crumb hidden" data-view="sub"></span>
+  <div class="view-switch">
+    <button data-view="map" class="active">地图首页</button>
+    <button data-view="team">球队详情</button>
+    <button data-view="radar">雷达图</button>
+    <button data-view="scatter">散点图</button>
+    <button data-view="bar">排名对比</button>
+  </div>
+</nav>
+
+<!-- View 1: Map -->
+<div id="view-map" class="view active">
+  <div id="map-layout">
+    <div id="chart-map" class="chart-container chart-tall"></div>
+    <div id="map-ranking" class="ranking-panel">
+      <h3 class="ranking-title">&#127942; 球队胜场排名</h3>
+      <div id="ranking-list"></div>
+    </div>
+  </div>
+  <div id="map-tooltip" class="custom-tooltip hidden"></div>
+</div>
+
+<!-- View 2: Team -->
+<div id="view-team" class="view">
+  <button class="btn-back" data-target="map">&#8592; 返回地图首页</button>
+  <div class="team-header">
+    <img id="team-logo" class="team-logo-lg" alt="">
+    <div class="team-title"><h1 id="team-name"></h1><div class="sub" id="team-subtitle"></div></div>
+  </div>
+  <div id="team-cards" class="cards-row"></div>
+  <div class="btn-row">
+    <button class="btn-action" id="btn-scatter">&#128202; 胜场相关性散点图</button>
+    <button class="btn-action" id="btn-bar">&#128200; 联盟指标排名</button>
+  </div>
+  <h3 style="margin:16px 0 8px;color:#a0a0b0">&#127936; 球员数据表 <span style="font-size:12px;color:#666">(点击球员查看雷达图)</span></h3>
+  <div class="table-wrap"><table id="player-table" class="data-table"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- View 3: Radar -->
+<div id="view-radar" class="view">
+  <button class="btn-back" data-target="team">&#8592; 返回球队详情</button>
+  <div class="controls">
+    <label>模式:<select id="radar-mode"><option value="player">球员对比</option><option value="team">球队对比</option></select></label>
+    <span id="radar-player-controls">
+      <label>球队A:<select id="radar-filter-team-a"></select></label>
+      <label>球员A:<select id="radar-player-a"></select></label>
+      <label>球队B:<select id="radar-filter-team-b"></select></label>
+      <label>球员B:<select id="radar-player-b"></select></label>
+    </span>
+    <span id="radar-team-controls" class="hidden">
+      <label>球队A:<select id="radar-team-a"></select></label>
+      <label>球队B:<select id="radar-team-b"></select></label>
+    </span>
+  </div>
+  <div id="chart-radar" class="chart-container"></div>
+</div>
+
+<!-- View 4: Scatter -->
+<div id="view-scatter" class="view">
+  <button class="btn-back" data-target="team">&#8592; 返回球队详情</button>
+  <div class="controls">
+    <label>纵轴指标:<select id="scatter-metric">
+      <option value="pts">场均得分</option>
+      <option value="reb">场均篮板</option>
+      <option value="ast">场均助攻</option>
+      <option value="stl">场均抢断</option>
+      <option value="blk">场均盖帽</option>
+      <option value="tov">场均失误</option>
+      <option value="fgPct">投篮命中率</option>
+      <option value="tpPct">三分命中率</option>
+      <option value="ftPct">罚球命中率</option>
+      <option value="ortg">进攻效率</option>
+      <option value="drtg">防守效率</option>
+      <option value="off_rimShare">进攻-篮下占比</option>
+      <option value="off_midShare">进攻-中距离占比</option>
+      <option value="off_tpShare">进攻-三分占比</option>
+      <option value="def_rimShare">防守-篮下占比</option>
+      <option value="def_midShare">防守-中距离占比</option>
+      <option value="def_tpShare">防守-三分占比</option>
+    </select></label>
+    <span id="scatter-corr" class="corr"></span>
+  </div>
+  <div id="chart-scatter" class="chart-container"></div>
+</div>
+
+<!-- View 5: Bar -->
+<div id="view-bar" class="view">
+  <button class="btn-back" data-target="team">&#8592; 返回球队详情</button>
+  <div class="controls">
+    <label>指标:<select id="bar-metric">
+      <option value="pts">场均得分</option>
+      <option value="reb">场均篮板</option>
+      <option value="ast">场均助攻</option>
+      <option value="stl">场均抢断</option>
+      <option value="blk">场均盖帽</option>
+      <option value="tov">场均失误</option>
+      <option value="pf">场均犯规</option>
+      <option value="fgPct">投篮命中率</option>
+      <option value="tpPct">三分命中率</option>
+      <option value="ftPct">罚球命中率</option>
+      <option value="winPct">胜率</option>
+      <option value="ortg">进攻效率</option>
+      <option value="drtg">防守效率</option>
+    </select></label>
+    <label>高亮球队:<select id="bar-team"></select></label>
+  </div>
+  <div id="chart-bar" class="chart-container chart-tall"></div>
+</div>
+
+<script>
+(function(){
+var D = window.CBA_DATA;
+var state = {
+  view: 'map',
+  team: null,
+  playerA: null,
+  playerB: null,
+  radarMode: 'player',
+  scatterMetric: 'fgPct',
+  barMetric: 'pts',
+  barTeam: null,
+  history: []
+};
+
+// --- UTILITIES ---
+function getLogo(team) {
+  var fn = D._logoMap[team] || (team + '.png');
+  return 'cbalogo/' + fn;
+}
+function getDivision(team) {
+  return D._divisions.south.indexOf(team) >= 0 ? 'south' : 'north';
+}
+function getCity(team) { return D._homeCities[team] || ''; }
+function getTeam(team) {
+  var t = D.teams.find(function(x){return x.team===team});
+  var a = D.advTeam.find(function(x){return x.team===team});
+  var s = D.shotDist.find(function(x){return x.team===team});
+  var f = D.fourFactors.find(function(x){return x.team===team});
+  if (!t) return null;
+  return Object.assign({}, t, a||{}, s||{}, f||{});
+}
+function normalizeTeamName(name) {
+  // Map player data team names to canonical team names
+  var map = {'长白山恩都里':'长白山思都里'};
+  return map[name] || name;
+}
+function getTeamPlayers(team) {
+  return D.players.filter(function(p){return normalizeTeamName(p.team)===team});
+}
+function fmtPct(v) { if (v===null||v===undefined) return '-'; return (v*100).toFixed(1)+'%'; }
+function fmtNum(v,d) { d=d||1; if (v===null||v===undefined) return '-'; return Number(v).toFixed(d); }
+
+// --- NAVIGATION ---
+function pushHistory() {
+  state.history.push({view:state.view, team:state.team, playerA:state.playerA, playerB:state.playerB, radarMode:state.radarMode});
+  if (state.history.length > 20) state.history.shift();
+}
+function navigate(view, data) {
+  pushHistory();
+  if (data.team!==undefined) state.team = data.team;
+  if (data.playerA!==undefined) state.playerA = data.playerA;
+  if (data.playerB!==undefined) state.playerB = data.playerB;
+  if (data.radarMode!==undefined) state.radarMode = data.radarMode;
+  state.view = view;
+  showView(view);
+}
+function goBack(targetView) {
+  pushHistory();
+  if (targetView==='map') { state.team=null; state.playerA=null; state.playerB=null; }
+  if (targetView==='team') { state.playerA=null; state.playerB=null; }
+  state.view = targetView;
+  showView(targetView);
+}
+
+// --- VIEW SWITCHING ---
+function showView(name) {
+  document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});
+  var div = document.getElementById('view-'+name);
+  if (div) div.classList.add('active');
+  updateBreadcrumb();
+  updateNavButtons();
+  renderView(name);
+}
+
+// --- BREADCRUMB ---
+function updateBreadcrumb() {
+  var sep1 = document.getElementById('crumb-sep1');
+  var sep2 = document.getElementById('crumb-sep2');
+  var crTeam = document.getElementById('crumb-team');
+  var crSub = document.getElementById('crumb-sub');
+
+  sep1.classList.add('hidden'); sep2.classList.add('hidden');
+  crTeam.classList.add('hidden'); crSub.classList.add('hidden');
+
+  if (state.view==='map') {
+    // only root visible
+  } else if (state.view==='team') {
+    sep1.classList.remove('hidden');
+    crTeam.classList.remove('hidden');
+    crTeam.textContent = state.team || '';
+  } else {
+    sep1.classList.remove('hidden');
+    crTeam.classList.remove('hidden');
+    crTeam.textContent = state.team || '';
+    sep2.classList.remove('hidden');
+    crSub.classList.remove('hidden');
+    crSub.textContent = state.view==='radar' ? (state.radarMode==='player'?'球员雷达':'球队雷达') :
+                       state.view==='scatter' ? '散点图' : '排名对比';
+  }
+}
+function updateNavButtons() {
+  document.querySelectorAll('#breadcrumb .view-switch button').forEach(function(btn){
+    btn.classList.toggle('active', btn.dataset.view === state.view);
+  });
+}
+
+// --- RENDER DISPATCH ---
+function renderView(name) {
+  setTimeout(function(){
+    if (name==='map') renderMap();
+    else if (name==='team') renderTeam();
+    else if (name==='radar') renderRadar();
+    else if (name==='scatter') renderScatter();
+    else if (name==='bar') renderBar();
+  },50);
+}
+
+// --- EVENT HANDLERS ---
+document.querySelectorAll('#breadcrumb .crumb').forEach(function(el){
+  el.addEventListener('click', function(){
+    var v = this.dataset.view;
+    if (v==='map') goBack('map');
+    else if (v==='team' && state.team) goBack('team');
+    else if (v==='sub') { if (state.view!=='map') goBack(state.view); }
+  });
+});
+document.querySelectorAll('#breadcrumb .view-switch button').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var v = this.dataset.view;
+    if (v==='map') goBack('map');
+    else if (v==='team' && state.team) goBack('team');
+    else if (!state.team && v!=='map') { alert('请先从地图选择一支球队'); return; }
+    else {
+      pushHistory();
+      state.view = v;
+      showView(v);
+    }
+  });
+});
+document.querySelectorAll('.btn-back').forEach(function(btn){
+  btn.addEventListener('click', function(){ goBack(this.dataset.target); });
+});
+
+// ==================== VIEW 1: MAP ====================
+var mapChart = null;
+var geoLoaded = false;
+
+function loadGeoJSON(cb) {
+  if (geoLoaded) { cb(); return; }
+  fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
+    .then(function(r){return r.json()})
+    .then(function(data){
+      echarts.registerMap('china', data);
+      geoLoaded = true;
+      cb();
+    }).catch(function(){
+      document.getElementById('chart-map').innerHTML = '<div class="loading">地图数据加载失败，请检查网络连接</div>';
+    });
+}
+
+function renderMap() {
+  var dom = document.getElementById('chart-map');
+  if (!geoLoaded) {
+    dom.innerHTML = '<div class="loading">正在加载地图数据</div>';
+    loadGeoJSON(function(){ dom.innerHTML=''; renderMapChart(dom); });
+    return;
+  }
+  renderMapChart(dom);
+}
+
+function renderMapChart(dom) {
+  if (mapChart) { mapChart.dispose(); mapChart = null; }
+  mapChart = echarts.init(dom);
+
+  var scatterData = D.teams.map(function(t){
+    var coord = D._cityCoords[t.team] || [116,39];
+    var div = getDivision(t.team);
+    return {
+      name: t.team,
+      value: [coord[0], coord[1], t.rank],
+      symbol: 'image://'+getLogo(t.team).replace(/\\/g,'/'),
+      symbolSize: 80,
+      itemStyle: {
+        borderColor: div==='south'?'#E74C3C':'#2980B9',
+        borderWidth: 3,
+        borderType: 'solid',
+        shadowBlur: 8,
+        shadowColor: div==='south'?'rgba(231,76,60,.5)':'rgba(41,128,185,.5)'
+      }
+    };
+  });
+
+  mapChart.setOption({
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: '#16213e',
+      borderColor: '#0f3460',
+      textStyle: {color:'#e0e0e0',fontSize:13},
+      formatter: function(p){
+        if (!p.name) return '';
+        var t = getTeam(p.name);
+        if (!t) return p.name;
+        return '<div style="text-align:center">'+
+          '<img src="'+getLogo(t.team)+'" style="width:40px;height:40px;vertical-align:middle;margin-bottom:4px"/><br/>'+
+          '<b style="font-size:15px">'+t.team+'</b><br/>'+
+          '<span style="color:#808090">城市:</span> '+getCity(t.team)+' | '+
+          '<span style="color:#808090">排名:</span> #'+t.rank+'<br/>'+
+          '<span style="color:#808090">战绩:</span> '+t.wins+'胜'+t.losses+'负 '+
+          '<span style="color:'+(t.winPct>=0.5?'#27AE60':'#E74C3C')+'">'+fmtPct(t.winPct)+'</span><br/>'+
+          '<span style="color:#808090">场均:</span> '+fmtNum(t.pts)+'分 '+fmtNum(t.reb)+'板 '+fmtNum(t.ast)+'助'+
+          '</div>';
+      }
+    },
+    geo: {
+      map: 'china',
+      roam: true,
+      zoom: 1.2,
+      center: [104.5, 36],
+      scaleLimit: { min: 0.8, max: 5 },
+      label: { show: false },
+      itemStyle: {
+        areaColor: '#1e1e3a',
+        borderColor: '#3a3a6a',
+        borderWidth: 1
+      },
+      emphasis: {
+        label: { show: true, color: '#e0e0e0', fontSize: 12 },
+        itemStyle: { areaColor: '#2a2a5a' }
+      }
+    },
+    series: [{
+      type: 'scatter',
+      coordinateSystem: 'geo',
+      data: scatterData,
+      encode: { tooltip: [0,1,2] },
+      zlevel: 1
+    }]
+  });
+
+  mapChart.on('click', function(params){
+    if (params.name && D.teams.find(function(t){return t.team===params.name})) {
+      navigate('team', {team: params.name, playerA: null, playerB: null});
+    }
+  });
+
+  // Populate ranking panel
+  var ranked = D.teams.slice().sort(function(a,b){ return a.rank - b.rank; });
+  var rankHTML = ranked.map(function(t, i){
+    var div = getDivision(t.team);
+    var rk = t.rank;
+    var cls = rk <= 3 ? 'top3' : 'normal';
+    return '<div class="ranking-row '+div+'" data-team="'+t.team.replace(/"/g,'&quot;')+'">'+
+      '<span class="rk '+cls+'">'+rk+'</span>'+
+      '<img class="rk-logo" src="'+getLogo(t.team)+'" onerror="this.style.display=\'none\'">'+
+      '<span class="rk-name">'+t.team+'</span>'+
+      '<span class="rk-record">'+t.wins+'-'+t.losses+'</span>'+
+      '</div>';
+  }).join('');
+  document.getElementById('ranking-list').innerHTML = rankHTML;
+
+  // Click handlers for ranking rows
+  document.querySelectorAll('#ranking-list .ranking-row').forEach(function(row){
+    row.addEventListener('click', function(){
+      var teamName = this.dataset.team;
+      navigate('team', {team: teamName, playerA: null, playerB: null});
+    });
+  });
+
+  window.addEventListener('resize', function(){if(mapChart)mapChart.resize();});
+}
+
+// ==================== VIEW 2: TEAM DETAIL ====================
+function renderTeam() {
+  if (!state.team) return;
+  var t = getTeam(state.team);
+  if (!t) return;
+  var div = getDivision(state.team);
+
+  document.getElementById('team-logo').src = getLogo(t.team);
+  document.getElementById('team-name').textContent = t.team;
+  document.getElementById('team-subtitle').textContent = getCity(t.team)+' | '+
+    (div==='south'?'南区':'北区')+' | 排名 #'+t.rank;
+
+  // Cards — 15 key metrics
+  var cards = [
+    {lbl:'赛季排名', val:'#'+t.rank},
+    {lbl:'胜场', val:t.wins+'胜'},
+    {lbl:'负场', val:t.losses+'负'},
+    {lbl:'场均得分', val:fmtNum(t.pts)},
+    {lbl:'场均篮板', val:fmtNum(t.reb)},
+    {lbl:'场均助攻', val:fmtNum(t.ast)},
+    {lbl:'场均抢断', val:fmtNum(t.stl)},
+    {lbl:'场均盖帽', val:fmtNum(t.blk)},
+    {lbl:'场均失误', val:fmtNum(t.tov)},
+    {lbl:'投篮命中率', val:fmtPct(t.fgPct)},
+    {lbl:'三分命中率', val:fmtPct(t.tpPct)},
+    {lbl:'罚球命中率', val:fmtPct(t.ftPct)},
+    {lbl:'进攻效率', val:fmtNum(t.ortg)},
+    {lbl:'防守效率', val:fmtNum(t.drtg)},
+    {lbl:'净效率', val:(t.netRtg>0?'+':'')+fmtNum(t.netRtg)}
+  ];
+  document.getElementById('team-cards').innerHTML = cards.map(function(c){
+    return '<div class="stat-card '+div+'"><div class="lbl">'+c.lbl+'</div><div class="val '+
+      (div==='south'?'red':'blue')+'">'+c.val+'</div></div>';
+  }).join('');
+
+  // Sub-nav buttons
+  document.getElementById('btn-scatter').onclick = function(){ navigate('scatter',{}); };
+  document.getElementById('btn-bar').onclick = function(){
+    state.barTeam = state.team;
+    navigate('bar',{});
+  };
+
+  // Player table
+  var players = getTeamPlayers(state.team);
+  var cols = ['player','pos','gp','pts','reb','ast','stl','blk','tov','pf','fgPct','tpPct','ftPct'];
+  var colLabels = {'player':'球员','pos':'位置','gp':'场数','pts':'得分','reb':'篮板','ast':'助攻','stl':'抢断','blk':'盖帽','tov':'失误','pf':'犯规','fgPct':'投篮%','tpPct':'三分%','ftPct':'罚球%'};
+  var thead = '<tr>'+cols.map(function(k){return '<th data-col="'+k+'">'+colLabels[k]+'</th>';}).join('')+'</tr>';
+  function formatCell(val, col) {
+    if (val === null || val === undefined) return '-';
+    if (col === 'player' || col === 'pos') return val;
+    if (col === 'tpPct' || col === 'fgPct' || col === 'ftPct') return fmtPct(val);
+    return fmtNum(val, 1);
+  }
+
+  var tbody = players.map(function(p){
+    return '<tr data-player="'+p.player.replace(/"/g,'&quot;')+'">'+cols.map(function(k){
+      return '<td>'+formatCell(p[k], k)+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+
+  var table = document.getElementById('player-table');
+  table.querySelector('thead').innerHTML = thead;
+  table.querySelector('tbody').innerHTML = tbody;
+
+  // Sort
+  var sortCol = null, sortAsc = true;
+  table.querySelectorAll('th').forEach(function(th){
+    th.addEventListener('click', function(){
+      var col = th.dataset.col;
+      if (sortCol===col) sortAsc = !sortAsc; else { sortCol=col; sortAsc=false; }
+      players.sort(function(a,b){
+        var va = a[col]||0, vb = b[col]||0;
+        if (col==='player'||col==='pos') {
+          va = a[col]||''; vb = b[col]||'';
+          var cmp = va.localeCompare(vb, 'zh-CN');
+          return sortAsc ? cmp : -cmp;
+        }
+        return sortAsc ? va-vb : vb-va;
+      });
+      table.querySelector('tbody').innerHTML = players.map(function(p){
+        return '<tr data-player="'+p.player.replace(/"/g,'&quot;')+'">'+cols.map(function(k){
+          return '<td>'+formatCell(p[k], k)+'</td>';
+        }).join('')+'</tr>';
+      });
+      table.querySelectorAll('th').forEach(function(th2){th2.classList.toggle('sorted',th2.dataset.col===sortCol);});
+      bindPlayerClicks();
+    });
+  });
+
+  bindPlayerClicks();
+}
+
+function bindPlayerClicks() {
+  document.querySelectorAll('#player-table tbody tr').forEach(function(tr){
+    tr.addEventListener('click', function(){
+      var pName = tr.dataset.player;
+      if (pName) navigate('radar', {playerA: pName, playerB: null, radarMode: 'player'});
+    });
+  });
+}
+
+// ==================== VIEW 3: RADAR ====================
+var radarChart = null;
+function renderRadar() {
+  var modeSel = document.getElementById('radar-mode');
+  var ftASel = document.getElementById('radar-filter-team-a');
+  var ftBSel = document.getElementById('radar-filter-team-b');
+  var paSel = document.getElementById('radar-player-a');
+  var pbSel = document.getElementById('radar-player-b');
+  var taSel = document.getElementById('radar-team-a');
+  var tbSel = document.getElementById('radar-team-b');
+  var pCtrls = document.getElementById('radar-player-controls');
+  var tCtrls = document.getElementById('radar-team-controls');
+
+  modeSel.value = state.radarMode;
+  if (!state._filterTeamA) state._filterTeamA = state.team;
+  if (!state._filterTeamB) state._filterTeamB = state.team;
+
+  // --- Team filter dropdowns ---
+  ftASel.innerHTML = D.teams.map(function(t){
+    return '<option value="'+t.team.replace(/"/g,'&quot;')+'"'+(state._filterTeamA===t.team?' selected':'')+'>'+t.team+'</option>';
+  }).join('');
+  ftBSel.innerHTML = D.teams.map(function(t){
+    return '<option value="'+t.team.replace(/"/g,'&quot;')+'"'+(state._filterTeamB===t.team?' selected':'')+'>'+t.team+'</option>';
+  }).join('');
+
+  // --- Populate player A dropdown based on filter team A ---
+  function populatePlayerA() {
+    var playersA = getTeamPlayers(state._filterTeamA);
+    paSel.innerHTML = playersA.map(function(p){
+      return '<option value="'+p.player.replace(/"/g,'&quot;')+'"'+(state.playerA===p.player?' selected':'')+'>'+p.player+'</option>';
+    }).join('');
+    if (playersA.length>0 && !playersA.find(function(p){return p.player===state.playerA})) {
+      state.playerA = playersA[0].player;
+      paSel.value = state.playerA;
+    }
+  }
+
+  // --- Populate player B dropdown based on filter team B ---
+  function populatePlayerB() {
+    var playersB = getTeamPlayers(state._filterTeamB);
+    pbSel.innerHTML = '<option value="">-- 不对比 --</option>'+playersB.map(function(p){
+      return '<option value="'+p.player.replace(/"/g,'&quot;')+'"'+(state.playerB===p.player?' selected':'')+'>'+p.player+'</option>';
+    }).join('');
+  }
+
+  populatePlayerA();
+  populatePlayerB();
+
+  // --- Team dropdowns (for team comparison mode) ---
+  taSel.innerHTML = D.teams.map(function(t){
+    return '<option value="'+t.team.replace(/"/g,'&quot;')+'"'+(state.team===t.team?' selected':'')+'>'+t.team+'</option>';
+  }).join('');
+  tbSel.innerHTML = D.teams.map(function(t){
+    return '<option value="'+t.team.replace(/"/g,'&quot;')+'"'+(state.team!==t.team && D.teams.indexOf(t)===1?' selected':'')+'>'+t.team+'</option>';
+  }).join('');
+
+  updateRadarMode();
+  modeSel.onchange = function(){
+    state.radarMode = this.value;
+    updateRadarMode();
+    drawRadar();
+  };
+
+  ftASel.onchange = function(){ state._filterTeamA = this.value; populatePlayerA(); drawRadar(); };
+  ftBSel.onchange = function(){ state._filterTeamB = this.value; populatePlayerB(); drawRadar(); };
+  paSel.onchange = function(){ state.playerA = this.value; drawRadar(); };
+  pbSel.onchange = function(){ state.playerB = this.value; drawRadar(); };
+  taSel.onchange = function(){ drawRadar(); };
+  tbSel.onchange = function(){ drawRadar(); };
+
+  drawRadar();
+}
+
+function updateRadarMode() {
+  var isPlayer = document.getElementById('radar-mode').value === 'player';
+  document.getElementById('radar-player-controls').classList.toggle('hidden', !isPlayer);
+  document.getElementById('radar-team-controls').classList.toggle('hidden', isPlayer);
+}
+
+function drawRadar() {
+  var dom = document.getElementById('chart-radar');
+  if (radarChart) { radarChart.dispose(); radarChart = null; }
+  radarChart = echarts.init(dom);
+
+  var isPlayer = state.radarMode === 'player';
+  var dims = ['pts','reb','ast','stl','blk','fgPct','tpPct','tov'];
+  var dimNames = {'pts':'得分','reb':'篮板','ast':'助攻','stl':'抢断','blk':'盖帽','fgPct':'投篮%','tpPct':'三分%','tov':'失误'};
+  var colors = ['#E74C3C', '#2980B9'];
+
+  var pctFields = ['fgPct','tpPct','ftPct'];
+  // Compute league averages for each dimension as the radar background reference
+  var maxes = {};
+  dims.forEach(function(d){
+    if (isPlayer) {
+      var vals = D.players.map(function(p){ var v=p[d]||0; return pctFields.indexOf(d)>=0 ? v*100 : v; });
+      var sum = vals.reduce(function(a,b){return a+b},0);
+      var avg = sum / vals.length;
+      maxes[d] = Math.max(avg * 2, Math.max.apply(null, vals));
+    } else {
+      var vals2 = D.teams.map(function(t){ var v=t[d]||0; return pctFields.indexOf(d)>=0 ? v*100 : v; });
+      var sum2 = vals2.reduce(function(a,b){return a+b},0);
+      var avg2 = sum2 / vals2.length;
+      maxes[d] = Math.max(avg2 * 2, Math.max.apply(null, vals2));
+    }
+  });
+
+  function getPlayerData(pName) {
+    if (!pName) return null;
+    var p = D.players.find(function(x){return x.player===pName});
+    if (!p) return null;
+    var vals = dims.map(function(d){ return pctFields.indexOf(d)>=0 ? (p[d]||0)*100 : (p[d]||0); });
+    return {name: p.player+' ('+normalizeTeamName(p.team)+')', value: vals};
+  }
+
+  function getTeamData(tName) {
+    if (!tName) return null;
+    var t = D.teams.find(function(x){return x.team===tName});
+    if (!t) return null;
+    var vals = dims.map(function(d){ return pctFields.indexOf(d)>=0 ? (t[d]||0)*100 : (t[d]||0); });
+    return {name: t.team, value: vals};
+  }
+
+  var seriesData = [];
+  if (isPlayer) {
+    var pdA = getPlayerData(state.playerA || (state.team ? getTeamPlayers(state.team)[0]?.player : D.players[0]?.player));
+    if (pdA) {
+      pdA.lineStyle = {color:colors[0],width:2};
+      pdA.areaStyle = {color:'rgba(231,76,60,.25)'};
+      pdA.itemStyle = {color:colors[0]};
+      seriesData.push(pdA);
+    }
+    var pdB = getPlayerData(state.playerB);
+    if (pdB) {
+      pdB.lineStyle = {color:colors[1],width:2,type:'dashed'};
+      pdB.areaStyle = {color:'rgba(41,128,185,.25)'};
+      pdB.itemStyle = {color:colors[1]};
+      seriesData.push(pdB);
+    }
+  } else {
+    var tdA = getTeamData(document.getElementById('radar-team-a').value || state.team);
+    if (tdA) {
+      tdA.lineStyle = {color:colors[0],width:2};
+      tdA.areaStyle = {color:'rgba(231,76,60,.25)'};
+      tdA.itemStyle = {color:colors[0]};
+      seriesData.push(tdA);
+    }
+    var tdB = getTeamData(document.getElementById('radar-team-b').value);
+    if (tdB) {
+      tdB.lineStyle = {color:colors[1],width:2,type:'dashed'};
+      tdB.areaStyle = {color:'rgba(41,128,185,.25)'};
+      tdB.itemStyle = {color:colors[1]};
+      seriesData.push(tdB);
+    }
+  }
+
+  // Add league average as a reference line
+  var leagueAvgVals = dims.map(function(d){
+    if (isPlayer) {
+      var vals = D.players.map(function(p){ var v=p[d]||0; return pctFields.indexOf(d)>=0 ? v*100 : v; });
+      return vals.reduce(function(a,b){return a+b},0) / vals.length;
+    } else {
+      var vals = D.teams.map(function(t){ var v=t[d]||0; return pctFields.indexOf(d)>=0 ? v*100 : v; });
+      return vals.reduce(function(a,b){return a+b},0) / vals.length;
+    }
+  });
+  seriesData.push({
+    name: '联盟平均',
+    value: leagueAvgVals,
+    lineStyle: {color:'#808090',width:1.5,type:'dotted'},
+    areaStyle: {color:'transparent'},
+    itemStyle: {color:'#808090'},
+    symbol: 'diamond',
+    symbolSize: 4
+  });
+
+  var indicators = dims.map(function(d){
+    var m = maxes[d];
+    if (pctFields.indexOf(d)>=0) m = Math.max(50, m);
+    return {name: dimNames[d], max: Math.ceil(m) || 1};
+  });
+
+  radarChart.setOption({
+    tooltip: {trigger:'item',backgroundColor:'#16213e',borderColor:'#0f3460',textStyle:{color:'#e0e0e0'}},
+    legend: {data:seriesData.map(function(s){return s.name}),bottom:10,textStyle:{color:'#a0a0b0'}},
+    radar: {
+      indicator: indicators,
+      shape: 'polygon',
+      center: ['50%','52%'],
+      radius: '65%',
+      axisName: {color:'#a0a0b0',fontSize:12},
+      splitArea: {areaStyle:{color:['rgba(41,128,185,.05)','rgba(41,128,185,.1)','rgba(41,128,185,.05)','rgba(41,128,185,.1)']}},
+      splitLine: {lineStyle:{color:'rgba(160,160,176,.2)'}},
+      axisLine: {lineStyle:{color:'rgba(160,160,176,.3)'}}
+    },
+    series: [{type:'radar',data:seriesData,symbol:'circle',symbolSize:5}]
+  });
+
+  window.addEventListener('resize', function(){if(radarChart)radarChart.resize();});
+}
+
+// ==================== VIEW 4: SCATTER ====================
+var scatterChart = null;
+function renderScatter() {
+  document.getElementById('scatter-metric').value = state.scatterMetric;
+  document.getElementById('scatter-metric').onchange = function(){
+    state.scatterMetric = this.value;
+    drawScatter();
+  };
+  drawScatter();
+}
+
+function drawScatter() {
+  var dom = document.getElementById('chart-scatter');
+  if (scatterChart) { scatterChart.dispose(); scatterChart = null; }
+  scatterChart = echarts.init(dom);
+
+  var metric = state.scatterMetric;
+  var metricLabels = {pts:'场均得分',reb:'场均篮板',ast:'场均助攻',stl:'场均抢断',blk:'场均盖帽',tov:'场均失误',fgPct:'投篮命中率',tpPct:'三分命中率',ftPct:'罚球命中率',ortg:'进攻效率',drtg:'防守效率',off_rimShare:'进攻-篮下占比',off_midShare:'进攻-中距离占比',off_tpShare:'进攻-三分占比',def_rimShare:'防守-篮下占比',def_midShare:'防守-中距离占比',def_tpShare:'防守-三分占比'};
+
+  var pctMetrics = ['fgPct','tpPct','ftPct','winPct','off_rimShare','off_midShare','off_tpShare','def_rimShare','def_midShare','def_tpShare'];
+  var advMetrics = ['ortg','drtg'];
+  var shotMetrics = ['off_rimShare','off_midShare','off_tpShare','def_rimShare','def_midShare','def_tpShare'];
+  var data = D.teams.map(function(t){
+    var yVal;
+    if (advMetrics.indexOf(metric)>=0) {
+      var a = D.advTeam.find(function(x){return x.team===t.team});
+      yVal = a ? (a[metric]||0) : 0;
+    } else if (shotMetrics.indexOf(metric)>=0) {
+      var s = D.shotDist.find(function(x){return x.team===t.team});
+      yVal = s ? (s[metric]||0) : 0;
+      if (pctMetrics.indexOf(metric)>=0) yVal = yVal*100;
+    } else {
+      yVal = t[metric]||0;
+      if (pctMetrics.indexOf(metric)>=0) yVal = yVal*100;
+    }
+    return {team:t.team, x:t.wins, y:yVal, div:getDivision(t.team), logo:getLogo(t.team), rank:t.rank, wins:t.wins, losses:t.losses, winPct:t.winPct};
+  });
+
+  // Regression
+  var xs = data.map(function(d){return d.x}), ys = data.map(function(d){return d.y});
+  var n = xs.length;
+  var sx=0,sy=0,sxy=0,sx2=0,sy2=0;
+  for (var i=0;i<n;i++){sx+=xs[i];sy+=ys[i];sxy+=xs[i]*ys[i];sx2+=xs[i]*xs[i];sy2+=ys[i]*ys[i];}
+  var slope = (n*sxy-sx*sy)/(n*sx2-sx*sx);
+  var intercept = (sy-slope*sx)/n;
+  var r_num = n*sxy-sx*sy;
+  var r_den = Math.sqrt((n*sx2-sx*sx)*(n*sy2-sy*sy));
+  var r = r_den===0 ? 0 : r_num/r_den;
+
+  var minX = Math.min.apply(null,xs), maxX = Math.max.apply(null,xs);
+  var trendData = [[minX,slope*minX+intercept],[maxX,slope*maxX+intercept]];
+
+  var rLabel = 'r = '+r.toFixed(3)+' ';
+  var rClass;
+  if (Math.abs(r)>=0.7) { rLabel+='(强相关)'; rClass='strong'; }
+  else if (Math.abs(r)>=0.3) { rLabel+='(中等相关)'; rClass='moderate'; }
+  else { rLabel+='(弱相关)'; rClass='weak'; }
+  document.getElementById('scatter-corr').textContent = rLabel;
+  document.getElementById('scatter-corr').className = 'corr '+rClass;
+
+  scatterChart.setOption({
+    tooltip: {
+      trigger:'item',backgroundColor:'#16213e',borderColor:'#0f3460',textStyle:{color:'#e0e0e0'},
+      formatter: function(p){
+        if (p.seriesType==='line') return '';
+        var d = p.data;
+        return '<div style="text-align:center">'+
+          '<img src="'+d.logo+'" style="width:36px;height:36px;vertical-align:middle"/><br/>'+
+          '<b style="font-size:14px">'+d.team+'</b> <span style="color:#808090">#'+d.rank+'</span><br/>'+
+          '<span style="color:#F39C12">X 胜场: <b>'+d.wins+'</b></span> | '+
+          '<span style="color:#27AE60">Y '+metricLabels[metric]+': <b>'+(p.value?p.value[1].toFixed(2):'-')+'</b></span><br/>'+
+          '战绩: '+d.wins+'胜'+d.losses+'负 ('+fmtPct(d.winPct)+')</div>';
+      }
+    },
+    xAxis: {name:'胜场数',nameTextStyle:{color:'#a0a0b0'},axisLine:{lineStyle:{color:'#3a3a6a'}},axisLabel:{color:'#a0a0b0'},splitLine:{lineStyle:{color:'rgba(160,160,176,.1)'}}},
+    yAxis: {name:metricLabels[metric],nameTextStyle:{color:'#a0a0b0'},axisLine:{lineStyle:{color:'#3a3a6a'}},axisLabel:{color:'#a0a0b0'},splitLine:{lineStyle:{color:'rgba(160,160,176,.1)'}}},
+    series: [
+      {
+        type:'scatter',data:data.map(function(d){
+          return {name:d.team,value:[d.x,d.y],team:d.team,logo:d.logo,rank:d.rank,wins:d.wins,losses:d.losses,winPct:d.winPct,
+            symbol:'image://'+d.logo.replace(/\\/g,'/'),symbolSize:28,
+            itemStyle:{borderColor:d.div==='south'?'#E74C3C':'#2980B9',borderWidth:2}};
+        })
+      },
+      {
+        type:'line',data:trendData,smooth:false,symbol:'none',
+        lineStyle:{color:'#F39C12',width:2,type:'dashed'},
+        z:1
+      }
+    ]
+  });
+
+  scatterChart.on('click', function(params){
+    if (params.data && params.data.team) {
+      navigate('team', {team: params.data.team, playerA: null, playerB: null});
+    }
+  });
+
+  window.addEventListener('resize', function(){if(scatterChart)scatterChart.resize();});
+}
+
+// ==================== VIEW 5: BAR CHART ====================
+var barChart = null;
+function renderBar() {
+  document.getElementById('bar-metric').value = state.barMetric;
+  var teamSel = document.getElementById('bar-team');
+  teamSel.innerHTML = D.teams.map(function(t){
+    return '<option value="'+t.team.replace(/"/g,'&quot;')+'"'+(state.barTeam===t.team?' selected':'')+'>'+t.team+'</option>';
+  }).join('');
+  if (!state.barTeam && D.teams.length>0) state.barTeam = D.teams[0].team;
+
+  document.getElementById('bar-metric').onchange = function(){
+    state.barMetric = this.value;
+    drawBar();
+  };
+  teamSel.onchange = function(){
+    state.barTeam = this.value;
+    drawBar();
+  };
+  drawBar();
+}
+
+function drawBar() {
+  var dom = document.getElementById('chart-bar');
+  if (barChart) { barChart.dispose(); barChart = null; }
+  barChart = echarts.init(dom);
+
+  var metric = state.barMetric;
+  var metricLabels = {pts:'场均得分',reb:'场均篮板',ast:'场均助攻',stl:'场均抢断',blk:'场均盖帽',tov:'场均失误',pf:'场均犯规',fgPct:'投篮命中率',tpPct:'三分命中率',ftPct:'罚球命中率',winPct:'胜率',ortg:'进攻效率',drtg:'防守效率'};
+
+  var pctMetrics = ['fgPct','tpPct','ftPct','winPct'];
+  var advMetrics = ['ortg','drtg'];
+  var data = D.teams.map(function(t){
+    var val;
+    if (advMetrics.indexOf(metric)>=0) {
+      var a = D.advTeam.find(function(x){return x.team===t.team});
+      val = a ? (a[metric]||0) : 0;
+    } else {
+      val = t[metric]||0;
+      if (pctMetrics.indexOf(metric)>=0) val = val*100;
+    }
+    return {team:t.team, value:val, div:getDivision(t.team)};
+  });
+
+  // Sort descending (except drtg where lower is better - but keep consistent)
+  data.sort(function(a,b){return b.value-a.value});
+
+  var highlightTeam = state.barTeam;
+
+  barChart.setOption({
+    tooltip: {
+      trigger:'axis',axisPointer:{type:'shadow'},backgroundColor:'#16213e',borderColor:'#0f3460',textStyle:{color:'#e0e0e0'},
+      formatter: function(ps){
+        var d = ps[0]; if (!d) return '';
+        var t = getTeam(d.name);
+        return '<b>'+d.name+'</b> #'+(t?t.rank:'-')+'<br/>'+
+          metricLabels[metric]+': <b>'+d.value.toFixed(1)+'</b><br/>'+
+          '分区: '+(getDivision(d.name)==='south'?'南区':'北区');
+      }
+    },
+    grid: {left:120,right:40,top:20,bottom:30},
+    xAxis: {
+      type:'value',name:metricLabels[metric],
+      nameTextStyle:{color:'#a0a0b0'},axisLine:{lineStyle:{color:'#3a3a6a'}},
+      axisLabel:{color:'#a0a0b0'},splitLine:{lineStyle:{color:'rgba(160,160,176,.1)'}}
+    },
+    yAxis: {
+      type:'category',data:data.map(function(d){return d.team}).reverse(),
+      inverse:true,
+      axisLabel:{
+        color:'#a0a0b0',fontSize:11,
+        formatter: function(name){
+          var isHL = name===highlightTeam;
+          return (isHL?'{hl|★ }':'')+'{name|'+name+'}';
+        },
+        rich: {
+          hl: {color:'#F39C12',fontWeight:'bold'},
+          name: {color:'#a0a0b0'}
+        }
+      },
+      axisLine:{lineStyle:{color:'#3a3a6a'}}
+    },
+    series: [{
+      type:'bar',
+      data: data.slice().reverse().map(function(d){
+        var isHL = d.team===highlightTeam;
+        var div = d.div;
+        return {
+          value: d.value,
+          itemStyle: {
+            color: isHL ? (div==='south'?'#E74C3C':'#2980B9') : '#3a3a5a',
+            borderRadius: [0,4,4,0]
+          }
+        };
+      }),
+      barWidth: 16,
+      label: {
+        show: true,position:'right',fontSize:10,color:'#808090',
+        formatter: function(p){ return p.value.toFixed(1); }
+      },
+      emphasis: {
+        itemStyle: {color:'#F39C12'}
+      }
+    }]
+  });
+
+  barChart.on('click', function(params){
+    if (params.name && D.teams.find(function(t){return t.team===params.name})) {
+      navigate('team', {team: params.name, playerA: null, playerB: null});
+    }
+  });
+
+  window.addEventListener('resize', function(){if(barChart)barChart.resize();});
+}
+
+// ==================== INIT ====================
+// Preload GeoJSON
+loadGeoJSON(function(){
+  if (state.view==='map') {
+    var dom = document.getElementById('chart-map');
+    if (dom && !dom.querySelector('.loading')) renderMapChart(dom);
+  }
+});
+
+// Show initial view
+showView('map');
+
+// Global resize handler
+window.addEventListener('resize', function(){
+  [mapChart, radarChart, scatterChart, barChart].forEach(function(c){
+    try { if(c) c.resize(); } catch(e){}
+  });
+});
+
+console.log('CBA 2025-2026 数据可视化系统已就绪');
+console.log('球队: '+D.teams.length+' | 球员: '+D.players.length);
+})();
+</script>
+</body>
+</html>
